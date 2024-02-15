@@ -24,9 +24,10 @@ simulationTimeLimit = 3600 * 5; % sec
 simulationTime = 1:simulationTimeLimit;
 
 % Controls
-referenceTemp = 40;
-kp = 100;
-ki = 0.048;
+referenceTempVector = [35 35 40 40 35 35];
+referenceTempTime = [1 1200 1201 2400 2401 3600] * 5;
+kp = 300;
+ki = 0.065;
 kd = 0;
 
 % Simulation
@@ -38,6 +39,8 @@ for time = simulationTime
     else
         currentTemp = Tt(time - 1);
     end
+
+    referenceTemp = interp1(referenceTempTime, referenceTempVector, time, "linear", "extrap");
     
     [current, prevITerm, prevError, pTerm, dTerm] = pid(dt, referenceTemp, currentTemp, kp, ki, kd, prevError, prevITerm);
     Tt(time) = ((current^2) * rBlock * rToAmbient + massOfBlock*cP*rToAmbient*currentTemp + tAmbient) / ...
@@ -47,6 +50,7 @@ for time = simulationTime
     pTermVector(time) = pTerm;
     iTermVector(time) = prevITerm;
     dTermVector(time) = dTerm;
+    referenceTemps(time) = referenceTemp;
 
 end
 
@@ -54,17 +58,18 @@ figure(1)
 hold on
 grid on
 plot(simulationTime / 3600, Tt,"LineWidth", 2)
-yline(40)
+plot(simulationTime / 3600, referenceTemps,"LineWidth", 2, "Color", "black")
+% yline(40)
 xlabel('Time [hrs]')
 ylabel('Temperature of the block')
 title('Temperature response')
 
-figure
-grid on
-plot(simulationTime / 3600, currentVector,"LineWidth", 2)
-xlabel('Time [hrs]')
-ylabel('Current of the block')
-title('Current response')
+% figure
+% grid on
+% plot(simulationTime / 3600, currentVector,"LineWidth", 2)
+% xlabel('Time [hrs]')
+% ylabel('Current of the block')
+% title('Current response')
 
 % figure
 % grid on
