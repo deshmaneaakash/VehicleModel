@@ -2,24 +2,14 @@ clear
 clc
 
 r0 = 4;
-r1 = 4;
-r2 = 4;
-r3 = 4;
-
-c1 = 50;
-c2 = 50;
-c3 = 50;
-
 rcParams = [6.2  6.2;
             35 35];
-
 ocv = 3;
 
 time = linspace(0, 100, 100);
 currentProfile_t = [0 25 26 50 51 100];
 currentProfile_A = [0 0 1 1 0 0] * 0.5;
 numPairs = 2;
-
 vP = zeros(1, numPairs);
 
 for i = 1:length(time)
