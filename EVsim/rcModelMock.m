@@ -1,28 +1,45 @@
 clear
 clc
 
-r0 = 4;
-rcParams = [6.2  6.2;
-            35 35];
+r0 = 0.01;
+rcParams = [0.02 0.03;
+            30 40];
 ocv = 3;
 
-time = linspace(0, 100, 100);
-currentProfile_t = [0 25 26 50 51 100];
-currentProfile_A = [0 0 1 1 0 0] * 0.5;
+load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\EVsim\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
+
+time = meas.Time;
+voltage = meas.Voltage;
+currentData = meas.Current;
+
+% time = linspace(0, 100, 100);
+% currentProfile_t = [0 25 26 50 51 100];
+% currentProfile_A = [0 0 1 1 0 0] * -0.5;
+
+currentProfile_t = time;
+currentProfile_A = currentData;
+
 numPairs = 2;
 vP = zeros(1, numPairs);
 
 for i = 1:length(time)
     t = time(i);
-    current = interp1(currentProfile_t, currentProfile_A, t, "linear");
-    
+    if i == 1
+        dt = 0.1;
+    else
+        dt = time(i) - time(i-1);
+    end
+
+    % current = interp1(currentProfile_t, currentProfile_A, t, "linear");
+    current = currentData(i);
+
     % Iterating through pairs
     ccv(i) = ocv;
 
     for rcPair = 1:numPairs
         r = rcParams(1, rcPair);
         c = rcParams(2, rcPair);
-        vPolar = RCP(current, r, c, vP(rcPair), t);
+        vPolar = RCP(current, r, c, vP(rcPair), dt);
         ccv(i) = ccv(i) + vPolar;
         vP(rcPair) = vPolar;
     end
@@ -37,9 +54,10 @@ plot(time, ccv, "LineWidth", 2)
 xlabel("Time [s]")
 ylabel("Voltage [V]")
 title("RC Pair Response")
-% ylim([2 20])
+% ylim([-7 3])
+% xlim([15545 15560])
 
-function v = RCP(current, r, c, vP, t)
-    rcExp = exp(-t / (r * c));
+function v = RCP(current, r, c, vP, dt)
+    rcExp = exp(-dt / (r * c));
     v = ((current * r) * (1 - rcExp) + (vP * rcExp));
 end

@@ -1,15 +1,31 @@
 clear
 clc
 
-rawData = readtable('LG 18651HG2\LG 18650HG2 Li-ion Battery Data and Example Deep Neural Network xEV SOC Estimator Script\LG_HG2_Original_Dataset_McMasterUniversity_Jan_2020\25degC\549_HPPC.csv');
-rawData(1,:) = [];
+load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\EVsim\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
 
 %%
-time = seconds(table2array((rawData(:,"ProgTime"))));
-voltage = table2array((rawData(:,"Voltage")));
-current = table2array((rawData(:,"Current")));
+time = meas.Time;
+voltage = meas.Voltage;
+current = meas.Current;
 
-figure
-hold on
-plot(time, voltage, 'LineWidth', 2)
-plot(time, current, 'LineWidth', 2)
+inputData = [time, current];
+
+% Initial parameters for the model
+r0 = 0.02; % ohm
+r1 = 0.01; % ohm
+c1 = 50;   % F
+r2 = 0.003;% ohm
+c2 = 40;   %F
+
+rcModelSim = 'rcModelSimulink';
+% open_system("rcModelSimulink")
+% sim(rcModelSim,'FixedStep', '0.1');
+
+
+% Set parameters
+% r0Path = [rcModelSim, '/RC pair/r0'];
+
+% paramValue = get_param('oneRCModel/RC Pair/r0','Resistance');
+% set_param(path, "Resistance", r0);
+
+
