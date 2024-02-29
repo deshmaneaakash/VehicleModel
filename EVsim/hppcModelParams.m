@@ -5,8 +5,15 @@ load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\EVsim\Panasonic-1865
 
 %%
 time = meas.Time;
+[time, uniqueIndices, ~] = unique(time);
+simulationTime = max(time);
+
 voltage = meas.Voltage;
+voltage = voltage(uniqueIndices);
+
 current = meas.Current;
+current = current(uniqueIndices);
+
 inputData = [time, current];
 cell = batteryCell_PANA18650PF;
 soc = cell.soc;
@@ -14,14 +21,13 @@ ocv = cell.ocv.discharge;
 initialSoc = 100;
 
 % Initial parameters for the model
-r0 = 0.02; % ohm
-r1 = 0.01; % ohm
-c1 = 50;   % F
-r2 = 0.003;% ohm
-c2 = 40;   %F
+r0 = 0.03; % ohm
+r1 = 0.05; % ohm
+c1 = 15;   % F
+r2 = 0.05;% ohm
+c2 = 14;   %F
 
-rcModelSim = 'rcModelSimulink';
-% open_system("rcModelSimulink")
+out = sim("rcModelSimulink", simulationTime);
 
 %%
 
