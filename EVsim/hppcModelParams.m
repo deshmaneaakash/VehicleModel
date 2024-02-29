@@ -7,8 +7,11 @@ load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\EVsim\Panasonic-1865
 time = meas.Time;
 voltage = meas.Voltage;
 current = meas.Current;
-
 inputData = [time, current];
+cell = batteryCell_PANA18650PF;
+soc = cell.soc;
+ocv = cell.ocv.discharge;
+initialSoc = 100;
 
 % Initial parameters for the model
 r0 = 0.02; % ohm
@@ -18,14 +21,13 @@ r2 = 0.003;% ohm
 c2 = 40;   %F
 
 rcModelSim = 'rcModelSimulink';
-open_system("rcModelSimulink")
-% sim(rcModelSim,'FixedStep', '0.1');
+% open_system("rcModelSimulink")
 
+%%
 
-% Set parameters
-% r0Path = [rcModelSim, '/RC pair/r0'];
-
-% paramValue = get_param('oneRCModel/RC Pair/r0','Resistance');
-% set_param(path, "Resistance", r0);
-
+figure
+hold on
+plot(out.ccv.Time, out.ccv.Data, "LineWidth", 2, "DisplayName", "Model")
+plot(time, voltage, "LineWidth", 2, "DisplayName", "Test")
+legend
 
