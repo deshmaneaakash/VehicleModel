@@ -18,7 +18,7 @@ r2 = 0.003;% ohm
 c2 = 40;   %F
 
 rcModelSim = 'rcModelSimulink';
-% open_system("rcModelSimulink")
+open_system("rcModelSimulink")
 % sim(rcModelSim,'FixedStep', '0.1');
 
 
