@@ -2,27 +2,29 @@ EV POWERTRAIN SIMULATION ARCHITECTURE
 
 Welcome to the EV Powertrain Simulation Architecture repository!
 
-### Overview
+Overview
 This repository is dedicated to the development of a comprehensive simulation architecture tailored for Electric Vehicle (EV) powertrains. The primary objective is to create a platform capable of accurately simulating the behavior of EV powertrains under various conditions, particularly focusing on intricate battery dynamics during charging and discharging processes, especially under diverse temperature environments.
 The development of this project is still ongoing!
 
-### Key Features
+Key Features
 To accomplish our objectives, this repository encapsulates:
 
-- **Data Compilation:** I am meticulously curating essential data required for constructing this simulation framework. This includes data from cell tests, Hybrid Pulse Power Characterization (HPPC), and Li-ion cell modeling.
+Data Compilation:
+I am meticulously curating essential data required for constructing this simulation framework. This includes data from cell tests, Hybrid Pulse Power Characterization (HPPC), and Li-ion cell modeling.
   
-- **Advanced Control Strategies:** I am trying to develop sophisticated control strategies specifically tailored for Battery Management Systems (BMS). These strategies encompass SoC, SoE, SoH estimation techniques, thermal controls and charge controls, ensuring optimal performance and longevity of EV batteries.
+Advanced Control Strategies:
+I am trying to develop sophisticated control strategies specifically tailored for Battery Management Systems (BMS). These strategies encompass SoC, SoE, SoH estimation techniques, thermal controls and charge controls, ensuring optimal performance and longevity of EV batteries.
 
-### Contribution
+Contribution
 Contributions to this repository are highly encouraged. Whether you're interested in enhancing control algorithms, refining simulation models, or expanding data sets, your involvement is invaluable to the advancement of EV powertrain simulation technology.
 
-### Feedback and Support
+Feedback and Support
 Your feedback is essential for the continual improvement of this project. If you encounter any issues, have suggestions for enhancements, or require assistance, don't hesitate to open an issue or reach out to the project maintainers.
 
 Thank you for your interest in our EV Powertrain Simulation Architecture project. I look forward to collaborating with you!
 
 ---
-### References
+References
 
 1) Some files in this repository are copyright (c) 2016 by Gregory L. Plett of the 
   University of Colorado Colorado Springs (UCCS). This work is licensed under 
