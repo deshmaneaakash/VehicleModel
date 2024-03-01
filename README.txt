@@ -1,9 +1,10 @@
-## EV Powertrain Simulation Architecture
+EV POWERTRAIN SIMULATION ARCHITECTURE
 
 Welcome to the EV Powertrain Simulation Architecture repository!
 
 ### Overview
 This repository is dedicated to the development of a comprehensive simulation architecture tailored for Electric Vehicle (EV) powertrains. The primary objective is to create a platform capable of accurately simulating the behavior of EV powertrains under various conditions, particularly focusing on intricate battery dynamics during charging and discharging processes, especially under diverse temperature environments.
+The development of this project is still ongoing!
 
 ### Key Features
 To accomplish our objectives, this repository encapsulates:
