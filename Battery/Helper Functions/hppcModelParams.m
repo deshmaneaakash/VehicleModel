@@ -1,7 +1,8 @@
 clear
 clc
+close all
 
-load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\EVsim\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
+load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
 
 %%
 
@@ -15,8 +16,11 @@ current = meas.Current;
 current = current(uniqueIndices);
 [peaks, xLocOfPeaks] = findpeaks(-current, "MinPeakDistance", 100);
 findpeaks(-current, "MinPeakDistance", 100);
-seperationBuffer = 100;
+seperationBuffer = 94;
 
+% flag = boolean(current ~= 0);
+f = find(current);
+packets = getIndexPacket(f);
 
 %%
 pulseEndIndices = xLocOfPeaks + seperationBuffer;
@@ -50,14 +54,35 @@ r2 = 0.05;% ohm
 c2 = 14;   %F
 
 simulationTime = max(pulsePackets(1).time);
-% open_system("rcModelSimulink")
+open_system("rcModelSimulink")
 % out = sim("rcModelSimulink", simulationTime);
 
 %%
+% 
+% figure
+% hold on
+% plot(out.ccv.Time, out.ccv.Data, "LineWidth", 2, "DisplayName", "Model")
+% plot(time, voltage, "LineWidth", 2, "DisplayName", "Test")
+% legend
 
-figure
-hold on
-plot(out.ccv.Time, out.ccv.Data, "LineWidth", 2, "DisplayName", "Model")
-plot(time, voltage, "LineWidth", 2, "DisplayName", "Test")
-legend
+%% Local Functions
+
+function packets = getIndexPacket(f)
+    packets = struct;
+    packetNum = 1;
+    indexPacket = [];
+    for index = 2:length(f)
+        if f(index) - f(index - 1) == 1
+            indexPacket = [indexPacket f(index - 1)];
+        else
+            bufferIndices = 1:20;
+            preBuffer = flip(indexPacket(1) - bufferIndices);
+            postBuffer = indexPacket(end) + bufferIndices;
+            indexPacket = [preBuffer indexPacket postBuffer];
+            packets(packetNum).indices = indexPacket;
+            indexPacket = [];
+            packetNum = packetNum + 1;
+        end
+    end
+end
 
