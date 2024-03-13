@@ -11,6 +11,12 @@ function [ccv, vP]  = rcModelForParamEstimation(ocv, current, r0, r1, c1, r2, c2
 end
 
 function v = RCP(current, r, c, vP, dt)
-    rcExp = exp(-dt / (r * c));
-    v = ((current * r) * (1 - rcExp) + (vP * rcExp));
+    
+    % Continuous Model
+    % rcExp = exp(-dt / (r * c));
+    % v = ((current * r) * (1 - rcExp) + (vP * rcExp));
+
+    % Discrete Model
+    dV = dt*(-vP / (r * c) + current / c);
+    v = vP + dV;
 end
