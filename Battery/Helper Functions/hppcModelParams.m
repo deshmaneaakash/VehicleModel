@@ -3,6 +3,7 @@ clc
 close all
 
 load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
+% % load('"C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_10.10 3390_dis5_10p.mat"')
 
 %%
 
@@ -14,60 +15,57 @@ voltage = voltage(uniqueIndices);
 
 current = meas.Current;
 current = current(uniqueIndices);
-[peaks, xLocOfPeaks] = findpeaks(-current, "MinPeakDistance", 100);
-findpeaks(-current, "MinPeakDistance", 100);
-seperationBuffer = 94;
 
-% flag = boolean(current ~= 0);
-f = find(current);
-packets = getIndexPacket(f);
+loadCurrentIndices = find(current);
+cell = batteryCell_PANA18650PF;
+pulsePackets = getIndexPacket(cell, loadCurrentIndices, time, current, voltage);
+Ah = ah(time, current);
+%% 
+% for i = 1:66
+%     figure
+%     hold on
+%     plot(pulsePackets(i).time, pulsePackets(i).voltage)
+%     yyaxis right
+%     plot(pulsePackets(i).time, pulsePackets(i).current)
+%     hold off
+% 
+% end
+
 
 %%
-pulseEndIndices = xLocOfPeaks + seperationBuffer;
-pulsePackets = struct;
-pulseStartIndex = 1;
-
-for endIndex = 1:length(pulseEndIndices)
-    pulseEndIndex = pulseEndIndices(endIndex);
-    pulsePackets(endIndex).time = time(pulseStartIndex:pulseEndIndex);
-    pulsePackets(endIndex).current = current(pulseStartIndex:pulseEndIndex);
-    pulsePackets(endIndex).voltage = voltage(pulseStartIndex:pulseEndIndex);
-    pulseStartIndex = pulseEndIndex + 1;
-end
-
-figure;
-plot(pulsePackets(2).time, pulsePackets(2).current)
-
-inputData = [pulsePackets(1).time, pulsePackets(1).current];
-measuredTime = pulsePackets(1).time;
-measuredVoltage = pulsePackets(1).voltage;
-cell = batteryCell_PANA18650PF;
-soc = cell.soc;
-ocv = cell.ocv.discharge;
-initialSoc = 100;
-
-% Initial parameters for the model
-r0 = 0.03; % ohm
-r1 = 0.05; % ohm
-c1 = 15;   % F
-r2 = 0.05;% ohm
-c2 = 14;   %F
-
-simulationTime = max(pulsePackets(1).time);
-open_system("rcModelSimulink")
-% out = sim("rcModelSimulink", simulationTime);
+% pulse = pulsePackets(3);
+% inputData = [pulse.time, pulse.current];
+% measuredTime = pulse.time;
+% measuredVoltage = pulse.voltage;
+% 
+% soc = cell.soc;
+% ocv = cell.ocv.discharge;
+% initialSoc = 100;
+% 
+% % Initial parameters for the model
+% r0 = 0.03; % ohm
+% r1 = 0.05; % ohm
+% c1 = 15;   % F
+% r2 = 0.05;% ohm
+% c2 = 14;   %F
+% 
+% simObj = "rcModelSimulink";
+% stopTime = max(pulse.time);
+% open_system(simObj)
+% set_param(simObj, "StartTime", num2str(0), "StopTime", num2str(stopTime))
+% out = sim(simObj);
 
 %%
 % 
 % figure
 % hold on
 % plot(out.ccv.Time, out.ccv.Data, "LineWidth", 2, "DisplayName", "Model")
-% plot(time, voltage, "LineWidth", 2, "DisplayName", "Test")
+% plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
 % legend
 
 %% Local Functions
 
-function packets = getIndexPacket(f)
+function packets = getIndexPacket(cell, f, time, current, voltage)
     packets = struct;
     packetNum = 1;
     indexPacket = [];
@@ -75,14 +73,63 @@ function packets = getIndexPacket(f)
         if f(index) - f(index - 1) == 1
             indexPacket = [indexPacket f(index - 1)];
         else
-            bufferIndices = 1:20;
-            preBuffer = flip(indexPacket(1) - bufferIndices);
-            postBuffer = indexPacket(end) + bufferIndices;
+            preBufferIndices = 1:2;
+            postBufferIndices = 1:50;
+            preBuffer = flip(indexPacket(1) - preBufferIndices);
+            postBuffer = indexPacket(end) + postBufferIndices;
             indexPacket = [preBuffer indexPacket postBuffer];
+
             packets(packetNum).indices = indexPacket;
+            packets(packetNum).time = time(indexPacket) - time(indexPacket(1));
+            packets(packetNum).current = current(indexPacket);
+            packets(packetNum).voltage = voltage(indexPacket);
+
+            % Assign initial SOC by coulomb counting
+            if packetNum == 1
+                packets(packetNum).initialSoc = 100; % Assuming cell is fully charged at the start of the HPPC test
+            else
+                packets(packetNum).initialSoc = coulombCounting(packets(packetNum).time, packets(packetNum).current, cell.ratedCapacity, packets(packetNum-1).initialSoc);
+            end
+
+
             indexPacket = [];
             packetNum = packetNum + 1;
         end
+    end
+end
+
+function finalSoc = coulombCounting(timeData, currentData, cellCapacity, initialSoc)
+
+    for t = 1:length(timeData)
+        
+        % Coulomb Counting
+        current = currentData(t);
+
+        if t == 1
+            soc(t) = initialSoc;
+        else
+            dt = timeData(t) - timeData(t-1);
+            soc(t) = soc(t-1) + dt * current * 100 / (cellCapacity * 3600);
+        end
+    
+    end
+    finalSoc = soc(end);
+end
+
+function Ah = ah(timeData, currentData)
+
+    for t = 1:length(timeData)
+        
+        % Coulomb Counting
+        current = currentData(t);
+
+        if t == 1
+            Ah(t) = 0;
+        else
+            dt = timeData(t) - timeData(t-1);
+            Ah(t) = Ah(t-1) + dt * current /3600;
+        end
+    
     end
 end
 
