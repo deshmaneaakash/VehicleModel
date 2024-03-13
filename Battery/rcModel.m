@@ -27,6 +27,13 @@ ccv = ocv + V0 + vP1 + vP2;
 end
 
 function v = RCP(current, r, c, vP, t)
+
+    % Continuous Model
     rcExp = exp(-t / (r * c));
     v = ((current * r) * (1 - rcExp) + (vP * rcExp));
+
+    % Discrete Model
+    % dV = dt*(-vP / (r * c) + current / c);
+    % v = vP + dV;
+    
 end
