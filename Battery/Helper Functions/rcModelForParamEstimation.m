@@ -6,7 +6,7 @@ function [ccv, vP]  = rcModelForParamEstimation(ocv, current, r0, r1, c1, r2, c2
     
     vP(1) = vP1;
     vP(2) = vP2;
-    ccv = ocv + V0 + vP1;
+    ccv = ocv + V0 + vP1 + vP2;
 
 end
 
