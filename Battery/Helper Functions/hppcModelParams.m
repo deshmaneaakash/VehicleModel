@@ -2,6 +2,7 @@ clear
 clc
 close all
 
+addpath 'C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Battery'
 load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
 % % load('"C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_10.10 3390_dis5_10p.mat"')
 
@@ -20,6 +21,9 @@ loadCurrentIndices = find(current);
 cell = batteryCell_PANA18650PF;
 pulsePackets = getIndexPacket(cell, loadCurrentIndices, time, current, voltage);
 Ah = ah(time, current);
+Ah_raw = ah(meas.Time, meas.Current);
+measTime = meas.Time;
+Ah_integrate = trapz(current) / 3600;
 %% 
 % for i = 1:66
 %     figure
@@ -33,35 +37,51 @@ Ah = ah(time, current);
 
 
 %%
-% pulse = pulsePackets(3);
-% inputData = [pulse.time, pulse.current];
-% measuredTime = pulse.time;
-% measuredVoltage = pulse.voltage;
-% 
-% soc = cell.soc;
-% ocv = cell.ocv.discharge;
-% initialSoc = 100;
-% 
-% % Initial parameters for the model
-% r0 = 0.03; % ohm
-% r1 = 0.05; % ohm
-% c1 = 15;   % F
-% r2 = 0.05;% ohm
-% c2 = 14;   %F
-% 
-% simObj = "rcModelSimulink";
-% stopTime = max(pulse.time);
-% open_system(simObj)
-% set_param(simObj, "StartTime", num2str(0), "StopTime", num2str(stopTime))
-% out = sim(simObj);
+pulse = pulsePackets(1);
+inputData = [pulse.time, pulse.current];
+measuredTime = pulse.time;
+measuredVoltage = pulse.voltage;
+
+soc = cell.soc;
+ocv = cell.ocv.discharge;
+initialSoc = 100;
+
+% Initial parameters for the model
+r0 = 0.005; % ohm
+r1 = 0.01; % ohm
+c1 = 8;   % F
+r2 = 0.03;% ohm
+c2 = 12;   %F
+
+pulse.initialParams.r0 = r0;
+pulse.initialParams.r1 = r1;
+pulse.initialParams.c1 = c1;
+pulse.initialParams.r2 = r2;
+pulse.initialParams.c2 = c2;
+
+% Solve Non Linear Least Squares Optimization
+rcParams = rcParamsSolver(cell, pulse);
+
+r0 = rcParams(1);
+r1 = rcParams(2);
+c1 = rcParams(3);
+r2 = rcParams(4);
+c2 = rcParams(5);
+
+
+simObj = "rcModelSimulink";
+stopTime = max(pulse.time);
+load_system(simObj)
+set_param(simObj, "StartTime", num2str(0), "StopTime", num2str(stopTime))
+out = sim(simObj);
 
 %%
 % 
-% figure
-% hold on
-% plot(out.ccv.Time, out.ccv.Data, "LineWidth", 2, "DisplayName", "Model")
-% plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
-% legend
+figure
+hold on
+plot(out.ccv.Time, out.ccv.Data, "LineWidth", 2, "DisplayName", "Model")
+plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
+legend
 
 %% Local Functions
 
@@ -127,7 +147,7 @@ function Ah = ah(timeData, currentData)
             Ah(t) = 0;
         else
             dt = timeData(t) - timeData(t-1);
-            Ah(t) = Ah(t-1) + dt * current /3600;
+            Ah(t) = Ah(t-1) + dt * current / 3600;
         end
     
     end
