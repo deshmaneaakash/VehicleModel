@@ -14,7 +14,7 @@ time = meas.Time;
 [time, uniqueIndices, ~] = unique(time);
 voltage = meas.Voltage;
 voltage = voltage(uniqueIndices);
-currentData = -meas.Current;
+currentData = meas.Current;
 currentData = currentData(uniqueIndices);
 
 r0 = 0.005; % ohm
@@ -23,33 +23,21 @@ c1 = 8;     % F
 r2 = 0.03;  % ohm
 c2 = 12;    % F
 dt = 0.1;   % s
-p = polyfit(cell.soc, cell.ocv.discharge, 6);
-vOCV = polyval(p, cell.soc);
-dvOCVBySoc = polyder(p);
-
-% A = [1             0                            0;
-%      0     exp(-dt / (r1 * c1))                 0;
-%      0             0               exp(-dt / (r2 * c2))];
+vOCVPolynomial = polyfit(cell.soc, cell.ocv.discharge, 6);
+vOCV = polyval(vOCVPolynomial, cell.soc);
 
 A = [1             0                            0;
      0     (1 - dt / (r1 * c1))                 0;
      0             0               (1 - dt / (r2 * c2))];
-% 
-% B = [     dt / cell.maxCapacity;
-%       r1 * (1 - exp(-dt / (r1 * c1)))
-%       r2 * (1 - exp(-dt / (r2 * c2)))];
 
-B = [     dt / cell.maxCapacity;
-          dt / c1;
-          dt / c2];
+B = [ dt / (cell.maxCapacity * 3600);
+      dt / c1;
+      dt / c2];
 
 D = -r0;
 
-R = 8.4e-4;
-Q = diag([1000 0.1 0.1]) * R;
-
-processNoise = 0.1;
-sensorNoise = 0.5;
+R = 0.1;
+Q = diag([1e-5 1e-3 1e-3]);
 
 % Initialization 
 xUpdated = [100;
@@ -58,7 +46,7 @@ xUpdated = [100;
 pUpdated = diag([10 0.1 0.1]);
 
 
-% Simulation
+%% Simulation
 
 for i = 1:length(time)
     
@@ -72,9 +60,11 @@ for i = 1:length(time)
     % State Prediction
     xPrediction = A * xUpdated + B * u;
     pPrediction = A * pUpdated * A' + Q;
-    C = [polyval(dvOCVBySoc, xUpdated(1)) -1 -1];
+    % C = [polyval(dvOCVBydSoc, xUpdated(1)*100) -1 -1];
 
     % System output estimate
+    dvOCVBySoc = polyval(vOCVPolynomial, xUpdated(1)) / xUpdated(1);
+    C = [dvOCVBySoc -1 -1];
     y = C * xPrediction + D * u;
     voltagePredicted = y;
 
