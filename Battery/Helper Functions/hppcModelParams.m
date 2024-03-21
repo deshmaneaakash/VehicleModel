@@ -60,13 +60,13 @@ pulse.initialParams.r2 = r2;
 pulse.initialParams.c2 = c2;
 
 % Solve Non Linear Least Squares Optimization
-rcParams = rcParamsSolver(cell, pulse);
-
-r0 = rcParams(1);
-r1 = rcParams(2);
-c1 = rcParams(3);
-r2 = rcParams(4);
-c2 = rcParams(5);
+% rcParams = rcParamsSolver(cell, pulse);
+% 
+% r0 = rcParams(1);
+% r1 = rcParams(2);
+% c1 = rcParams(3);
+% r2 = rcParams(4);
+% c2 = rcParams(5);
 
 
 simObj = "rcModelSimulink";
