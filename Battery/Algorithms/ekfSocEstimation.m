@@ -17,6 +17,8 @@ voltage = voltage(uniqueIndices);
 currentData = meas.Current;
 currentData = currentData(uniqueIndices);
 
+%% System
+
 r0 = 0.005; % ohm
 r1 = 0.01;  % ohm
 c1 = 8;     % F
@@ -40,10 +42,12 @@ R = 0.1;
 Q = diag([1e-5 1e-3 1e-3]);
 
 % Initialization 
-xUpdated = [100;
+initialSoc = 100;
+xUpdated = [initialSoc;
            0;
            0];
 pUpdated = diag([10 0.1 0.1]);
+uncontrollableStates = length(A) - rank(ctrb(A,B));
 
 
 %% Simulation
@@ -79,17 +83,39 @@ for i = 1:length(time)
     socEstimate(i) = xUpdated(1);
     stateEstimates(:,i) = xUpdated;
     kalmanGains(i) = kalmanGain(1);
+    variances(i) = pUpdated(1);
+    unobservableStates(i) = length(A) - rank(obsv(A,C));
+
+    % Coulomb Counting
+
+    if i == 1
+        CCSoc(i) = initialSoc;
+    else
+        dt = time(i) - time(i-1);
+        CCSoc(i) = CCSoc(i-1) + dt * u * 100 / (cell.maxCapacity * 3600);
+    end
+
 end
 
-figure
-plot(time / 3600, socEstimate, 'LineWidth', 2)
-xlabel("Time [Hrs]")
-ylabel("SOC [%]")
-title("SOC Estimate using EKF")
 
 figure
-plot(time / 3600, kalmanGains, 'LineWidth', 2)
+hold on
+plot(time / 3600, socEstimate, 'LineWidth', 2, "DisplayName", "SoC estimate from EKF")
+plot(time / 3600, CCSoc, 'LineWidth', 2, "DisplayName", "SoC estimate from Coulomb Counting")
 xlabel("Time [Hrs]")
-ylabel("Kalman Gain")
-title("Kalman Gain vs Time")
+ylabel("SOC [%]")
+title("SOC Estimates")
+
+% figure
+% plot(time / 3600, kalmanGains, 'LineWidth', 2)
+% xlabel("Time [Hrs]")
+% ylabel("Kalman Gain")
+% title("Kalman Gain vs Time")
+% 
+% figure
+% plot(time / 3600, variances, 'LineWidth', 2)
+% xlabel("Time [Hrs]")
+% ylabel("Variance")
+% title("Variance of SOC vs Time")
+
 
