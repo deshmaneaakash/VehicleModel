@@ -18,10 +18,10 @@ function x = rcParamsSolver(cell, pulse)
     V = f(initialParams, pulse.current);
     opt = optimoptions('lsqcurvefit');
     opt.MaxFunctionEvaluations = 1000 * length(initialParams);
-    opt.OptimalityTolerance = 0.1;
+    opt.OptimalityTolerance = 0.01;
     opt.FunctionTolerance = 0.5;
     lb = zeros(1,length(initialParams)) + 0.01;
-    ub = [0.1 0.1 10 0.1 10];
+    ub = [0.5 0.5 30000 0.5 30000];
 
     x = lsqcurvefit(f, initialParams, pulse.time, pulseVoltage, lb, ub);
 

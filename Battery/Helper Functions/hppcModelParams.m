@@ -47,11 +47,11 @@ ocv = cell.ocv.discharge;
 initialSoc = 100;
 
 % Initial parameters for the model
-r0 = 0.005; % ohm
-r1 = 0.01; % ohm
-c1 = 8;   % F
-r2 = 0.03;% ohm
-c2 = 12;   %F
+r0 = 0.2; % ohm
+r1 = 0.1; % ohm
+c1 = 1e4;   % F
+r2 = 0.3;% ohm
+c2 = 2e5;   %F
 
 pulse.initialParams.r0 = r0;
 pulse.initialParams.r1 = r1;
@@ -60,13 +60,13 @@ pulse.initialParams.r2 = r2;
 pulse.initialParams.c2 = c2;
 
 % Solve Non Linear Least Squares Optimization
-% rcParams = rcParamsSolver(cell, pulse);
-% 
-% r0 = rcParams(1);
-% r1 = rcParams(2);
-% c1 = rcParams(3);
-% r2 = rcParams(4);
-% c2 = rcParams(5);
+rcParams = rcParamsSolver(cell, pulse);
+
+r0 = rcParams(1);
+r1 = rcParams(2);
+c1 = rcParams(3);
+r2 = rcParams(4);
+c2 = rcParams(5);
 
 
 simObj = "rcModelSimulink";
