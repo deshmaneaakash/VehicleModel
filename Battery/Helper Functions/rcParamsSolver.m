@@ -14,16 +14,19 @@ function x = rcParamsSolver(cell, pulse)
 
     % V = runRCModel(initialParams, pulse.time, pulse.current, initialOcv);
     
-    f = @runRCModel;
-    V = f(initialParams, pulse.current);
-    opt = optimoptions('lsqcurvefit');
-    opt.MaxFunctionEvaluations = 1000 * length(initialParams);
-    opt.OptimalityTolerance = 0.01;
-    opt.FunctionTolerance = 0.5;
-    lb = zeros(1,length(initialParams)) + 0.01;
-    ub = [0.5 0.5 30000 0.5 30000];
+    % f = @runRCModel;
+    % V = f(initialParams, pulse.current);
+    % opt = optimoptions('lsqcurvefit');
+    % opt.MaxFunctionEvaluations = 1000 * length(initialParams);
+    % opt.OptimalityTolerance = 0.01;
+    % opt.FunctionTolerance = 0.5;
+    % lb = zeros(1,length(initialParams)) + 0.01;
+    % ub = [0.5 0.5 30000 0.5 30000];
+    % 
+    % x = lsqcurvefit(f, initialParams, pulse.time, pulseVoltage, lb, ub);
 
-    x = lsqcurvefit(f, initialParams, pulse.time, pulseVoltage, lb, ub);
+    modelName = 'rcModelSimulink';
+    exp = sdo.Experiment(modelName);
 
 end
 
