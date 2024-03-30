@@ -59,11 +59,11 @@ title("RC Pair Response")
 
 function v = RCP(current, r, c, vP, dt)
     % Continous model
-    rcExp = exp(-dt / (r * c));
-    v = ((current * r) * (1 - rcExp) + (vP * rcExp));
+    % rcExp = exp(-dt / (r * c));
+    % v = ((current * r) * (1 - rcExp) + (vP * rcExp));
 
     % Discrete Model
-    % dV = dt*(-vP / (r * c) + current / c);
-    % v = vP + dV;
+    dV = dt*(-vP / (r * c) + current / c);
+    v = vP + dV;
 
 end
