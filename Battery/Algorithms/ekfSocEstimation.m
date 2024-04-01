@@ -19,11 +19,11 @@ currentData = currentData(uniqueIndices);
 
 %% System
 
-r0 = 0.005; % ohm
-r1 = 0.01;  % ohm
-c1 = 8;     % F
-r2 = 0.03;  % ohm
-c2 = 12;    % F
+r0 = 0.001;
+r1 = 0.0005;
+c1 = 0.3;
+r2 = 0.05;
+c2 = 4;
 dt = 0.1;   % s
 vOCVPolynomial = polyfit(cell.soc, cell.ocv.discharge, 6);
 vOCV = polyval(vOCVPolynomial, cell.soc);
@@ -97,14 +97,24 @@ for i = 1:length(time)
 
 end
 
-
+Ah = meas.Ah(uniqueIndices);
+socFromAh = 100 + Ah * 100 / cell.maxCapacity;
 figure
 hold on
 plot(time / 3600, socEstimate, 'LineWidth', 2, "DisplayName", "SoC estimate from EKF")
 plot(time / 3600, CCSoc, 'LineWidth', 2, "DisplayName", "SoC estimate from Coulomb Counting")
+plot(time / 3600, socFromAh, 'LineWidth', 2, "DisplayName", "SoC from Ah reading")
 xlabel("Time [Hrs]")
 ylabel("SOC [%]")
 title("SOC Estimates")
+legend
+
+figure
+hold on
+plot(meas.Time, meas.Voltage, "DisplayName", "Voltage")
+yyaxis right
+plot(meas.Time, meas.Current, "DisplayName", "Current")
+legend
 
 % figure
 % plot(time / 3600, kalmanGains, 'LineWidth', 2)
