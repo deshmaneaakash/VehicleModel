@@ -1,12 +1,14 @@
 clear
 clc
 close all
+tic
 
 addpath 'C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Battery'
 load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
 % % load('"C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_10.10 3390_dis5_10p.mat"')
 
 %%
+cell = batteryCell_PANA18650PF;
 
 time = meas.Time;
 [time, uniqueIndices, ~] = unique(time);
@@ -16,9 +18,12 @@ voltage = voltage(uniqueIndices);
 
 current = -meas.Current;
 current = current(uniqueIndices);
+Ah = meas.Ah(uniqueIndices);
+socFromAh = 100 + Ah * 100 / cell.maxCapacity;
+
+
 
 loadCurrentIndices = find(current);
-cell = batteryCell_PANA18650PF;
 pulsePackets = getIndexPacket(cell, loadCurrentIndices, time, current, voltage);
 numPulses = size(pulsePackets);
 numPulses = numPulses(2);
@@ -43,7 +48,7 @@ for pulseNum = 1:numPulses
     
     soc = cell.soc;
     ocv = cell.ocv.discharge;
-    initialSoc = initialParams.soc;
+    initialOCV = measuredVoltage(1);
     
     % Initial parameters for the model
     r0 = initialParams.r0;  % ohm
@@ -55,7 +60,7 @@ for pulseNum = 1:numPulses
     paramNames = ["c1", "c2", "r0", "r1", "r2"];
     paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
     params = initializeParams(paramNames, paramInitialValues);
-    estimatedParamsRaw = parameterEstimationRcModel(initialParams, inputData, params, measuredData);
+    estimatedParamsRaw = parameterEstimationRcModel(params, measuredData);
     estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
     estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
     estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
@@ -68,10 +73,6 @@ for pulseNum = 1:numPulses
     r2 = estimatedParams.r2;   % ohm
     c2 = estimatedParams.c2;      %F
 
-    out = runSim(pulse.time);
-    estimatedParams.soc = out.soc.Data(end);
-
-    pulsePackets(pulseNum).soc = estimatedParams.soc;
     pulsePackets(pulseNum).r0 = estimatedParams.r0;
     pulsePackets(pulseNum).r1 = estimatedParams.r1;
     pulsePackets(pulseNum).c1 = estimatedParams.c1;
@@ -83,7 +84,7 @@ for pulseNum = 1:numPulses
     disp(['DONE WITH PACKET NUMBER = ' num2str(pulseNum) 'OUT OF ' num2str(numPulses)])
 
 end
-
+toc
 %%
 % 
 for pulsecheck = 1:66
@@ -93,13 +94,14 @@ for pulsecheck = 1:66
     c1 = pulse.c1;    % F
     r2 = pulse.r2;   % ohm
     c2 = pulse.c2;
-    initialSoc = pulse.soc;
+
     inputData = [pulse.time, pulse.current];
     % measuredTime = pulse.time;
     % measuredVoltage = pulse.voltage;
     % measuredData = timeseries(measuredVoltage,measuredTime);
+    initialOCV = pulse.voltage(1);
     out = runSim(pulse.time);
-    
+
     figure
     hold on
     plot(out.simout.Time, out.simout.Data, "LineWidth", 2, "DisplayName", "Estimated Model")
@@ -107,9 +109,32 @@ for pulsecheck = 1:66
     legend
 end
 
+%%
+
+% figure;plot(flip([pulsePackets.r0]), "DisplayName", "R0");legend
+% figure;plot(flip([pulsePackets.r1]), "DisplayName", "R1");legend
+% figure;plot(flip([pulsePackets.r2]), "DisplayName", "R2");legend
+% figure;plot(flip([pulsePackets.c2]), "DisplayName", "C2");legend
+% figure;plot(flip([pulsePackets.c1]), "DisplayName", "C1");legend
+
+ocv = cell.ocv.discharge;
+[ocv, uniqueIndices, ~] = unique(ocv);
+socs = cell.soc(uniqueIndices);
+
+for i=1:66
+    socVector(i) = interp1(ocv, socs, pulsePackets(i).voltage(1), "linear", 100);
+    r0Vector(i) = flip([pulsePackets(i).r0]);
+    r1Vector(i) = flip([pulsePackets(i).r1]);
+    r2Vector(i) = flip([pulsePackets(i).r2]);
+    c1Vector(i) = flip([pulsePackets(i).c1]);
+    c2Vector(i) = flip([pulsePackets(i).c2]);
+end
+
+socVector = (flip(socVector));
+
 %% Local Functions
 
-function packets = getIndexPacket(cell, f, time, current, voltage)
+function packets = getIndexPacket(f, time, current, voltage)
     packets = struct;
     packetNum = 1;
     indexPacket = [];
