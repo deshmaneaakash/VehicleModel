@@ -1,4 +1,4 @@
-function [pOpt,Info] = parameterEstimationRcModel(initialParams, inputData, p, measuredData)
+function [pOpt,Info] = parameterEstimationRcModel(p, measuredData)
 %PARAMETERESTIMATIONRCMODELPARAMSEST
 %
 % Solve a parameter estimation problem for the rcModelParamsEst model.
