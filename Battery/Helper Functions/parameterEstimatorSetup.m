@@ -20,51 +20,92 @@ current = current(uniqueIndices);
 loadCurrentIndices = find(current);
 cell = batteryCell_PANA18650PF;
 pulsePackets = getIndexPacket(cell, loadCurrentIndices, time, current, voltage);
-
+numPulses = size(pulsePackets);
+numPulses = numPulses(2);
 %%
-pulse = pulsePackets(1);
-inputData = [pulse.time, pulse.current];
-measuredTime = pulse.time;
-measuredVoltage = pulse.voltage;
-measuredData = timeseries(measuredVoltage,measuredTime);
-
-soc = cell.soc;
-ocv = cell.ocv.discharge;
-initialSoc = 100;
 
 % Initial parameters for the model
-r0 = 0.01; % ohm
-r1 = 0.003; % ohm
-c1 = 60;   % F
-r2 = 0.04;% ohm
-c2 = 50;   %F
+initialParams.soc = 100;
+initialParams.r0 = 0.001;
+initialParams.r1 = 0.0005;
+initialParams.c1 = 0.3;
+initialParams.r2 = 0.05;
+initialParams.c2 = 4;
 
-paramNames = ["c1", "c2", "r0", "r1", "r2"];
-paramInitialValues = [c1 c2 r0 r1 r2];
-params = initializeParams(paramNames, paramInitialValues);
-estimatedParamsRaw = parameterEstimationRcModel(params, measuredData);
-c1 = estimatedParamsRaw(1,1).Value;
-c2 = estimatedParamsRaw(1,1).Value;
-r0 = estimatedParamsRaw(1,1).Value;
-r1 = estimatedParamsRaw(1,1).Value;
-r2 = estimatedParamsRaw(1,1).Value;
+for pulseNum = 1:numPulses
 
-%%
-simObj = "rcModelParamsEst";
-stopTime = max(pulse.time);
-load_system(simObj)
-set_param(simObj, "StartTime", num2str(0), "StopTime", num2str(stopTime))
-out = sim(simObj);
+    pulse = pulsePackets(pulseNum);
 
+    inputData = [pulse.time, pulse.current];
+    measuredTime = pulse.time;
+    measuredVoltage = pulse.voltage;
+    measuredData = timeseries(measuredVoltage,measuredTime);
+    
+    soc = cell.soc;
+    ocv = cell.ocv.discharge;
+    initialSoc = initialParams.soc;
+    
+    % Initial parameters for the model
+    r0 = initialParams.r0;  % ohm
+    r1 = initialParams.r1;  % ohm
+    c1 = initialParams.c1;  % F
+    r2 = initialParams.r2;  % ohm
+    c2 = initialParams.c2;  %F
 
+    paramNames = ["c1", "c2", "r0", "r1", "r2"];
+    paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
+    params = initializeParams(paramNames, paramInitialValues);
+    estimatedParamsRaw = parameterEstimationRcModel(initialParams, inputData, params, measuredData);
+    estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
+    estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
+    estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
+    estimatedParams.r1 = estimatedParamsRaw(1,4).Value;
+    estimatedParams.r2 = estimatedParamsRaw(1,5).Value;
+
+    r0 = estimatedParams.r0;  % ohm
+    r1 = estimatedParams.r1; % ohm
+    c1 = estimatedParams.c1;    % F
+    r2 = estimatedParams.r2;   % ohm
+    c2 = estimatedParams.c2;      %F
+
+    out = runSim(pulse.time);
+    estimatedParams.soc = out.soc.Data(end);
+
+    pulsePackets(pulseNum).soc = estimatedParams.soc;
+    pulsePackets(pulseNum).r0 = estimatedParams.r0;
+    pulsePackets(pulseNum).r1 = estimatedParams.r1;
+    pulsePackets(pulseNum).c1 = estimatedParams.c1;
+    pulsePackets(pulseNum).r2 = estimatedParams.r2;
+    pulsePackets(pulseNum).c2 = estimatedParams.c2;
+
+    initialParams = estimatedParams;
+
+    disp(['DONE WITH PACKET NUMBER = ' num2str(pulseNum) 'OUT OF ' num2str(numPulses)])
+
+end
 
 %%
 % 
-figure
-hold on
-plot(out.simout.Time, out.simout.Data, "LineWidth", 2, "DisplayName", "Estimated Model")
-plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
-legend
+for pulsecheck = 1:66
+    pulse = pulsePackets(pulsecheck);
+    r0 = pulse.r0;  % ohm
+    r1 = pulse.r1; % ohm
+    c1 = pulse.c1;    % F
+    r2 = pulse.r2;   % ohm
+    c2 = pulse.c2;
+    initialSoc = pulse.soc;
+    inputData = [pulse.time, pulse.current];
+    % measuredTime = pulse.time;
+    % measuredVoltage = pulse.voltage;
+    % measuredData = timeseries(measuredVoltage,measuredTime);
+    out = runSim(pulse.time);
+    
+    figure
+    hold on
+    plot(out.simout.Time, out.simout.Data, "LineWidth", 2, "DisplayName", "Estimated Model")
+    plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
+    legend
+end
 
 %% Local Functions
 
@@ -87,42 +128,85 @@ function packets = getIndexPacket(cell, f, time, current, voltage)
             packets(packetNum).current = current(indexPacket);
             packets(packetNum).voltage = voltage(indexPacket);
 
-            % Assign initial SOC by coulomb counting
-            if packetNum == 1
-                packets(packetNum).initialSoc = 100; % Assuming cell is fully charged at the start of the HPPC test
-            else
-                packets(packetNum).initialSoc = coulombCounting(packets(packetNum).time, packets(packetNum).current, cell.ratedCapacity, packets(packetNum-1).initialSoc);
-            end
-
-
             indexPacket = [];
             packetNum = packetNum + 1;
         end
     end
 end
 
-function finalSoc = coulombCounting(timeData, currentData, cellCapacity, initialSoc)
 
-    for t = 1:length(timeData)
-        
-        % Coulomb Counting
-        current = currentData(t);
-
-        if t == 1
-            soc(t) = initialSoc;
-        else
-            dt = timeData(t) - timeData(t-1);
-            soc(t) = soc(t-1) + dt * current * 100 / (cellCapacity * 3600);
-        end
-    
-    end
-    finalSoc = soc(end);
+function out = runSim(time)
+    simObj = "rcModelParamsEst";
+    stopTime = max(time);
+    load_system(simObj)
+    set_param(simObj, "StartTime", num2str(0), "StopTime", num2str(stopTime))
+    out = sim(simObj);
 end
+
+% function estimatedParams = paramsOfPulse(cell, initialParams, pulse)
+% 
+%     inputData = [pulse.time, pulse.current];
+%     measuredTime = pulse.time;
+%     measuredVoltage = pulse.voltage;
+%     measuredData = timeseries(measuredVoltage,measuredTime);
+% 
+%     soc = cell.soc;
+%     ocv = cell.ocv.discharge;
+%     initialSoc = initialParams.soc;
+% 
+%     % Initial parameters for the model
+%     r0 = initialParams.r0;  % ohm
+%     r1 = initialParams.r1;  % ohm
+%     c1 = initialParams.c1;  % F
+%     r2 = initialParams.r2;  % ohm
+%     c2 = initialParams.c2;  %F
+% 
+%     paramNames = ["c1", "c2", "r0", "r1", "r2"];
+%     paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
+%     params = initializeParams(paramNames, paramInitialValues);
+%     estimatedParamsRaw = parameterEstimationRcModel(initialParams, inputData, params, measuredData);
+%     estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
+%     estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
+%     estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
+%     estimatedParams.r1 = estimatedParamsRaw(1,4).Value;
+%     estimatedParams.r2 = estimatedParamsRaw(1,5).Value;
+% 
+%     r0 = estimatedParams.r0;  % ohm
+%     r1 = estimatedParams.r1; % ohm
+%     c1 = estimatedParams.c1;    % F
+%     r2 = estimatedParams.r2;   % ohm
+%     c2 = estimatedParams.c2;      %F
+% 
+%     out = runSim(pulse.time);
+%     estimatedParams.soc = out.soc.Data(end);
+% 
+% end
+
+% function estimatedParams = estimateParams(inputData, initialParams, measuredData)
+% 
+%     % Initial parameters for the model
+%     r0 = initialParams.r0;  % ohm
+%     r1 = initialParams.r1;  % ohm
+%     c1 = initialParams.c1;  % F
+%     r2 = initialParams.r2;  % ohm
+%     c2 = initialParams.c2;  %F
+% 
+%     paramNames = ["c1", "c2", "r0", "r1", "r2"];
+%     paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
+%     params = initializeParams(paramNames, paramInitialValues);
+%     estimatedParamsRaw = parameterEstimationRcModel(initialParams, inputData, params, measuredData);
+%     estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
+%     estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
+%     estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
+%     estimatedParams.r1 = estimatedParamsRaw(1,4).Value;
+%     estimatedParams.r2 = estimatedParamsRaw(1,5).Value;
+% end
 
 function params = initializeParams(paramNames, paramInitialValues)
     numParams = length(paramNames);
     for i = 1:numParams
         params(i) = param.Continuous(paramNames(i), paramInitialValues(i));
-        params(i).Minimum = 0;       
+        params(i).Minimum = 0;     
+        params(i).Scale = 0.25;
     end
 end
