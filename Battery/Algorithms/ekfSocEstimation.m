@@ -22,9 +22,10 @@ currentData = currentData(uniqueIndices);
 r0 = 0.001;
 r1 = 0.0005;
 c1 = 0.3;
-r2 = 0.05;
+r2 = 0.05;  
 c2 = 4;
 dt = 0.1;   % s
+efficiency = 0.99;
 vOCVPolynomial = polyfit(cell.soc, cell.ocv.discharge, 6);
 vOCV = polyval(vOCVPolynomial, cell.soc);
 
@@ -32,7 +33,7 @@ A = [1             0                            0;
      0     (1 - dt / (r1 * c1))                 0;
      0             0               (1 - dt / (r2 * c2))];
 
-B = [ dt / (cell.maxCapacity * 3600);
+B = [ dt * efficiency / (cell.maxCapacity * 3600);
       dt / c1;
       dt / c2];
 
@@ -67,8 +68,23 @@ for i = 1:length(time)
 
     % System output estimate
     socPredicted = xUpdated(1);
-    dvOCVBySoc = polyval(vOCVPolynomial, socPredicted) / socPredicted;
-    C = [dvOCVBySoc -1 -1];
+
+    % Calculating Jacobian
+    if i == 1
+        dvOCVBySoc = polyval(vOCVPolynomial, socPredicted) / socPredicted;
+    else
+        prevSoc = socEstimate(i-1);
+        dSoc = socPredicted - prevSoc;
+        if dSoc == 0
+            dvOCVBySoc = polyval(vOCVPolynomial, socPredicted) / socPredicted;
+        else
+            dvOcv = polyval(vOCVPolynomial, socPredicted) - polyval(vOCVPolynomial, prevSoc);
+            dvOCVBySoc = dvOcv / dSoc;
+        end
+    end
+    C = [dvOCVBySoc -1 -1]; % Jacobian of C matrix
+
+    % Output Estimate
     y = C * xPrediction + D * u;
     voltagePredicted = y;
 
@@ -84,7 +100,7 @@ for i = 1:length(time)
     stateEstimates(:,i) = xUpdated;
     kalmanGains(i) = kalmanGain(1);
     variances(i) = pUpdated(1);
-    unobservableStates(i) = length(A) - rank(obsv(A,C));
+    % unobservableStates(i) = length(A) - rank(obsv(A,C));
 
     % Coulomb Counting
 
