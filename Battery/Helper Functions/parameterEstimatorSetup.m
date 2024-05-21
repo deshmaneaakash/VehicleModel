@@ -1,3 +1,8 @@
+%% LI-ION CELL IMPEDANCE PARAMETER ESTIMATION USING NON-LINEAR LEAST SQUARES OPTIMIZATION
+% AAKASH DESHMANE
+% 5/21/2023
+% CONSTANT TEMPERATURE ESTIMATION SCRIPT
+
 clear
 clc
 close all
@@ -5,10 +10,12 @@ tic
 
 addpath 'C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Battery'
 load('C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_08.47 25degC_5Pulse_HPPC_Pan18650PF.mat')
-% % load('"C:\Users\deshm\OneDrive\Documents\GitHub\VehicleModel\Data\Panasonic-18650PF-Data-master\Panasonic 18650PF Data\25degC\5 pulse disch\03-11-17_10.10 3390_dis5_10p.mat"')
 
-%%
+%% ESTIMATION PREPROCESSING
+
 cell = batteryCell_PANA18650PF;
+soc = cell.soc;
+ocv = cell.ocv.discharge;
 
 time = meas.Time;
 [time, uniqueIndices, ~] = unique(time);
@@ -21,13 +28,12 @@ current = current(uniqueIndices);
 Ah = meas.Ah(uniqueIndices);
 socFromAh = 100 + Ah * 100 / cell.maxCapacity;
 
-
-
 loadCurrentIndices = find(current);
-pulsePackets = getIndexPacket(cell, loadCurrentIndices, time, current, voltage);
+pulsePackets = getIndexPacket(loadCurrentIndices, time, current, voltage);
 numPulses = size(pulsePackets);
 numPulses = numPulses(2);
-%%
+
+%% ESTIMATION 
 
 % Initial parameters for the model
 initialParams.soc = 100;
@@ -39,98 +45,110 @@ initialParams.c2 = 4;
 
 for pulseNum = 1:numPulses
 
+    % Packet pre processing
     pulse = pulsePackets(pulseNum);
-
     inputData = [pulse.time, pulse.current];
     measuredTime = pulse.time;
     measuredVoltage = pulse.voltage;
     measuredData = timeseries(measuredVoltage,measuredTime);
-    
-    soc = cell.soc;
-    ocv = cell.ocv.discharge;
     initialOCV = measuredVoltage(1);
-    
-    % Initial parameters for the model
+
+    % Initialization necessary as a placeholder for parameters!
     r0 = initialParams.r0;  % ohm
     r1 = initialParams.r1;  % ohm
     c1 = initialParams.c1;  % F
     r2 = initialParams.r2;  % ohm
-    c2 = initialParams.c2;  %F
+    c2 = initialParams.c2;  % F
 
+    % Initialize Parameters for estimation
     paramNames = ["c1", "c2", "r0", "r1", "r2"];
     paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
     params = initializeParams(paramNames, paramInitialValues);
+
+    % Estimation 
     estimatedParamsRaw = parameterEstimationRcModel(params, measuredData);
     estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
     estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
     estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
     estimatedParams.r1 = estimatedParamsRaw(1,4).Value;
     estimatedParams.r2 = estimatedParamsRaw(1,5).Value;
+    
+    % Data unpacking and packet post processing
 
     r0 = estimatedParams.r0;  % ohm
-    r1 = estimatedParams.r1; % ohm
-    c1 = estimatedParams.c1;    % F
-    r2 = estimatedParams.r2;   % ohm
-    c2 = estimatedParams.c2;      %F
+    r1 = estimatedParams.r1;  % ohm
+    c1 = estimatedParams.c1;  % F
+    r2 = estimatedParams.r2;  % ohm
+    c2 = estimatedParams.c2;  %F
 
     pulsePackets(pulseNum).r0 = estimatedParams.r0;
     pulsePackets(pulseNum).r1 = estimatedParams.r1;
     pulsePackets(pulseNum).c1 = estimatedParams.c1;
     pulsePackets(pulseNum).r2 = estimatedParams.r2;
     pulsePackets(pulseNum).c2 = estimatedParams.c2;
-
+    
+    % Initialize parameters for next packet
     initialParams = estimatedParams;
 
-    disp(['DONE WITH PACKET NUMBER = ' num2str(pulseNum) 'OUT OF ' num2str(numPulses)])
-
+    disp(['DONE WITH PACKET NUMBER = ' num2str(pulseNum) ' OUT OF ' num2str(numPulses)])
 end
+
 toc
-%%
-% 
-for pulsecheck = 1:66
-    pulse = pulsePackets(pulsecheck);
-    r0 = pulse.r0;  % ohm
-    r1 = pulse.r1; % ohm
-    c1 = pulse.c1;    % F
-    r2 = pulse.r2;   % ohm
-    c2 = pulse.c2;
 
-    inputData = [pulse.time, pulse.current];
-    % measuredTime = pulse.time;
-    % measuredVoltage = pulse.voltage;
-    % measuredData = timeseries(measuredVoltage,measuredTime);
-    initialOCV = pulse.voltage(1);
-    out = runSim(pulse.time);
-
-    figure
-    hold on
-    plot(out.simout.Time, out.simout.Data, "LineWidth", 2, "DisplayName", "Estimated Model")
-    plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
-    legend
-end
-
-%%
-
-% figure;plot(flip([pulsePackets.r0]), "DisplayName", "R0");legend
-% figure;plot(flip([pulsePackets.r1]), "DisplayName", "R1");legend
-% figure;plot(flip([pulsePackets.r2]), "DisplayName", "R2");legend
-% figure;plot(flip([pulsePackets.c2]), "DisplayName", "C2");legend
-% figure;plot(flip([pulsePackets.c1]), "DisplayName", "C1");legend
-
-ocv = cell.ocv.discharge;
-[ocv, uniqueIndices, ~] = unique(ocv);
-socs = cell.soc(uniqueIndices);
-
-for i=1:66
-    socVector(i) = interp1(ocv, socs, pulsePackets(i).voltage(1), "linear", 100);
-    r0Vector(i) = flip([pulsePackets(i).r0]);
-    r1Vector(i) = flip([pulsePackets(i).r1]);
-    r2Vector(i) = flip([pulsePackets(i).r2]);
-    c1Vector(i) = flip([pulsePackets(i).c1]);
-    c2Vector(i) = flip([pulsePackets(i).c2]);
-end
+%% Processed plotting
 
 socVector = (flip(socVector));
+
+% Impedance Plots
+figure
+plot(flip(socVector), flip([pulsePackets.r0]))
+xlabel("SOC [%]")
+ylabel("R0 [ohms]")
+title("R0 vs SOC")
+
+figure
+plot(flip(socVector), flip([pulsePackets.r1]))
+xlabel("SOC [%]")
+ylabel("R1 [ohms]")
+title("R1 vs SOC")
+
+figure
+plot(flip(socVector), flip([pulsePackets.r2]))
+xlabel("SOC [%]")
+ylabel("R2 [ohms]")
+title("R2 vs SOC")
+
+figure
+plot(flip(socVector), flip([pulsePackets.c1]))
+xlabel("SOC [%]")
+ylabel("C1 [ohms]")
+title("C1 vs SOC")
+
+figure
+plot(flip(socVector), flip([pulsePackets.c2]))
+xlabel("SOC [%]")
+ylabel("C2 [ohms]")
+title("C2 vs SOC")
+
+% Plots for verification
+% for pulsecheck = 1:66
+%     pulse = pulsePackets(pulsecheck);
+%     r0 = pulse.r0;  % ohm
+%     r1 = pulse.r1; % ohm
+%     c1 = pulse.c1;    % F
+%     r2 = pulse.r2;   % ohm
+%     c2 = pulse.c2;
+% 
+%     inputData = [pulse.time, pulse.current];
+%     initialOCV = pulse.voltage(1);
+%     out = runSim(pulse.time);
+% 
+%     figure
+%     hold on
+%     plot(out.simout.Time, out.simout.Data, "LineWidth", 2, "DisplayName", "Estimated Model")
+%     plot(pulse.time, pulse.voltage, "LineWidth", 2, "DisplayName", "Test")
+%     legend
+% end
 
 %% Local Functions
 
@@ -159,7 +177,6 @@ function packets = getIndexPacket(f, time, current, voltage)
     end
 end
 
-
 function out = runSim(time)
     simObj = "rcModelParamsEst";
     stopTime = max(time);
@@ -167,65 +184,6 @@ function out = runSim(time)
     set_param(simObj, "StartTime", num2str(0), "StopTime", num2str(stopTime))
     out = sim(simObj);
 end
-
-% function estimatedParams = paramsOfPulse(cell, initialParams, pulse)
-% 
-%     inputData = [pulse.time, pulse.current];
-%     measuredTime = pulse.time;
-%     measuredVoltage = pulse.voltage;
-%     measuredData = timeseries(measuredVoltage,measuredTime);
-% 
-%     soc = cell.soc;
-%     ocv = cell.ocv.discharge;
-%     initialSoc = initialParams.soc;
-% 
-%     % Initial parameters for the model
-%     r0 = initialParams.r0;  % ohm
-%     r1 = initialParams.r1;  % ohm
-%     c1 = initialParams.c1;  % F
-%     r2 = initialParams.r2;  % ohm
-%     c2 = initialParams.c2;  %F
-% 
-%     paramNames = ["c1", "c2", "r0", "r1", "r2"];
-%     paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
-%     params = initializeParams(paramNames, paramInitialValues);
-%     estimatedParamsRaw = parameterEstimationRcModel(initialParams, inputData, params, measuredData);
-%     estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
-%     estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
-%     estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
-%     estimatedParams.r1 = estimatedParamsRaw(1,4).Value;
-%     estimatedParams.r2 = estimatedParamsRaw(1,5).Value;
-% 
-%     r0 = estimatedParams.r0;  % ohm
-%     r1 = estimatedParams.r1; % ohm
-%     c1 = estimatedParams.c1;    % F
-%     r2 = estimatedParams.r2;   % ohm
-%     c2 = estimatedParams.c2;      %F
-% 
-%     out = runSim(pulse.time);
-%     estimatedParams.soc = out.soc.Data(end);
-% 
-% end
-
-% function estimatedParams = estimateParams(inputData, initialParams, measuredData)
-% 
-%     % Initial parameters for the model
-%     r0 = initialParams.r0;  % ohm
-%     r1 = initialParams.r1;  % ohm
-%     c1 = initialParams.c1;  % F
-%     r2 = initialParams.r2;  % ohm
-%     c2 = initialParams.c2;  %F
-% 
-%     paramNames = ["c1", "c2", "r0", "r1", "r2"];
-%     paramInitialValues = [initialParams.c1 initialParams.c2 initialParams.r0 initialParams.r1 initialParams.r2];
-%     params = initializeParams(paramNames, paramInitialValues);
-%     estimatedParamsRaw = parameterEstimationRcModel(initialParams, inputData, params, measuredData);
-%     estimatedParams.c1 = estimatedParamsRaw(1,1).Value;
-%     estimatedParams.c2 = estimatedParamsRaw(1,2).Value;
-%     estimatedParams.r0 = estimatedParamsRaw(1,3).Value;
-%     estimatedParams.r1 = estimatedParamsRaw(1,4).Value;
-%     estimatedParams.r2 = estimatedParamsRaw(1,5).Value;
-% end
 
 function params = initializeParams(paramNames, paramInitialValues)
     numParams = length(paramNames);
