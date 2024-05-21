@@ -1,21 +1,21 @@
 % Thermal Modeling of a block
 
 clear
-close all
+% close all
 clc
 
 time = 1:0.5:10e4;
 mass = 1; % kg
-current = 2; % A
+current = 5; % A
 r = 10; % ohms
 cPBlock = 900; % J/KgC
 cPWater = 4200; % J/KgC
 cPAir = 1000; % J/KgC
-mDot = 0.01; % kg/s
+mDot = 0.1; % kg/s
 
-RFluidToBlock = 10;
-RBlockToRoom = 50;
-RRoomToAmbient = 5;
+RFluidToBlock = 1;
+RBlockToRoom = 5;
+RRoomToAmbient = 1;
 
 roomMass = 0.1 * 0.1 * 0.1 * 1.225; % volume * density
 
@@ -27,6 +27,11 @@ TblockInitial = Tequi;
 TroomInitial = Tequi;
 TambientInitial = Tequi;
 
+% Controller
+kp = 0.02;
+ki = 0.000;
+kd = 0;
+massTempReference = 1100;
 
 % Simulation
 tStates = zeros(length(time), 4);
@@ -34,6 +39,9 @@ tStates = zeros(length(time), 4);
 for t = 1:length(time)
     if t == 1
         tStates(t, :) = Tequi;
+        prevError = 0;
+        prevITerm = 0;
+
     else 
         dt = time(t) - time(t-1);
         Qgen = current^2 * r * dt;
@@ -73,19 +81,32 @@ for t = 1:length(time)
         dtRoomDrop = QlostToAmbient / (roomMass * cPAir);
         tStates(t, 4) = tStates(t, 4) - dtRoomDrop;
 
+        massTemp = tStates(t,3);
+        [current, prevITerm, prevError, pTerm, dTerm] = pid(dt, massTempReference, massTemp, kp, ki, kd, prevError, prevITerm);
+
     end
 
 end
 
 %% 
 
-figure
+figure(1)
 hold on
-plot(time, tStates(:, 1), 'DisplayName', 'T1', 'LineWidth', 2)
-plot(time, tStates(:, 2), 'DisplayName', 'T2', "LineWidth", 2, "LineStyle", "--")
+% plot(time, tStates(:, 1), 'DisplayName', 'T1', 'LineWidth', 2)
+% plot(time, tStates(:, 2), 'DisplayName', 'T2', "LineWidth", 2, "LineStyle", "-")
 plot(time, tStates(:, 3), 'DisplayName', 'Block Temerature', 'LineWidth', 2)
-plot(time, tStates(:, 4),'DisplayName', 'Room Temerature', 'LineWidth', 2)
+% plot(time, tStates(:, 4),'DisplayName', 'Room Temerature', 'LineWidth', 2)
 xlabel('Time [s]')
 ylabel('T [C]')
 title('Temperature vs time')
 legend
+
+function [output, iTerm, error, pTerm, dTerm] = pid(dt, reference, state, kp, ki, kd, prevError, prevITerm)
+
+    error = reference - state;
+    pTerm = kp * error;
+    iTerm = ki * error + prevITerm;
+    dTerm = kd * (error - prevError) / dt;
+    output = pTerm + iTerm + dTerm;
+end
+
