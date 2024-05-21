@@ -36,7 +36,7 @@ A = [1             0               0                    0;
      0             0               0           (1 - dt / (r2 * c2))];
 
 B = [ 0                          dt*efficiency/(cell.maxCapacity * 3600);
-      dt/(maxEnergy*3600)                               0;
+      dt*100/(maxEnergy*3600)                               0;
       0                                             dt/c1;
       0                                            dt/c2];
 
@@ -99,7 +99,7 @@ for i = 1:length(time)
         end
     end
     dvOCVBySoe = dvOCVBySoc * dSocBySoe;
-    C = [dvOCVBySoc dvOCVBySoe -1 -1]; % Jacobian of C matrix
+    C = [dvOCVBySoc 0 -1 -1]; % Jacobian of C matrix
 
     % Output Estimate
     y = C * xPrediction + D * u;
@@ -132,7 +132,10 @@ for i = 1:length(time)
 end
 
 Ah = meas.Ah(uniqueIndices);
-socFromAh = 100 + Ah * 100 / cell.maxCapacity;
+Wh = meas.Wh(uniqueIndices);
+soeFromWh = 100 + Wh * 100 / (cell.ratedCapacity * cell.maxV);
+socFromAh = 100 + Ah * 100 / cell.ratedCapacity;
+
 figure
 hold on
 plot(time / 3600, socEstimate, 'LineWidth', 2, "DisplayName", "SoC estimate from EKF")
@@ -145,10 +148,19 @@ legend
 
 figure
 hold on
-plot(meas.Time, meas.Voltage, "DisplayName", "Voltage")
-yyaxis right
-plot(meas.Time, meas.Current, "DisplayName", "Current")
+plot(time / 3600, soeEstimate, 'LineWidth', 2, "DisplayName", "SoE estimate from EKF")
+plot(time / 3600, soeFromWh, 'LineWidth', 2, "DisplayName", "SoE from Wh reading")
+xlabel("Time [Hrs]")
+ylabel("SOE [%]")
+title("SOE Estimates")
 legend
+
+% figure
+% hold on
+% plot(meas.Time, meas.Voltage, "DisplayName", "Voltage")
+% yyaxis right
+% plot(meas.Time, meas.Current, "DisplayName", "Current")
+% legend
 
 % figure
 % plot(time / 3600, kalmanGains, 'LineWidth', 2)
