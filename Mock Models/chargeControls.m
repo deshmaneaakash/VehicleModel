@@ -12,7 +12,7 @@ time = 1:1:10e3;
 timeLimit = max(time);
 chargePower = 5; % W
 chargerVoltage = 4.5; % V
-current = cell.maxCapacity/2;
+current = cell.maxCapacity;
 % currentProfile = [0 0 current current 0 0];
 % timeProfile = [1 (timeLimit/4 - 1)  (timeLimit/4) (3*timeLimit/4) (3*timeLimit/4  + 1) timeLimit];
 constantVoltage = cell.maxV;
@@ -27,9 +27,9 @@ isCVModeOn = false;
 % out = sim(simObj);
 
 % Controller
-kp = 5;
-ki = 0.01;
-kd = 5;
+kp = 1;
+ki = 10;
+kd = 15;
 
 soc = 0;
 dt = time(2) - time(1);
@@ -62,6 +62,7 @@ for t = 1:length(time)
     if isCVModeOn
     [current, iTerm, error, pTerm, dTerm] = pid(dt, cell.maxV, vT(t), kp, ki, kd, prevError, prevITerm);
     current = max(0, current);
+    current = min(cell.maxCapacity, current);
     end
     currentVector(t) = current;
     errorVector(t) = error;
@@ -77,10 +78,11 @@ end
 
 %% Plotting
 
-figure
+figure(1)
 hold on 
 plot(time/60, vT, '-r', "LineWidth", 2, "DisplayName", "Cell Voltage")
 plot(time/60, vOcv, '--r', "LineWidth", 2, "DisplayName", "Cell OCV")
+yline(cell.maxV, '--', "LineWidth", 2)
 xlabel("Time [mins]")
 ylabel("Voltage [V]")
 yyaxis right
@@ -88,8 +90,8 @@ plot(time/60, currentVector, '-b', "LineWidth", 2, "DisplayName", "Current")
 title("Cell Voltage and current reponse")
 legend
 
-figure
-plot(time/60, errorVector)
+% figure
+% plot(time/60, errorVector)
 % figure
 % plot(time/60, soc, '--k', "LineWidth", 2, "DisplayName", "SOC")
 % xlabel("Time [mins]")
