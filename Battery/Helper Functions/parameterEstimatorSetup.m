@@ -1,7 +1,6 @@
-%% LI-ION CELL IMPEDANCE PARAMETER ESTIMATION USING NON-LINEAR LEAST SQUARES OPTIMIZATION
+%% CONSTANT TEMPERATURE : LI-ION CELL IMPEDANCE PARAMETER ESTIMATION USING NON-LINEAR MULTIVARIABLE LEAST SQUARES OPTIMIZATION
 % AAKASH DESHMANE
 % 5/21/2023
-% CONSTANT TEMPERATURE ESTIMATION SCRIPT
 
 clear
 clc
@@ -95,9 +94,9 @@ end
 
 toc
 
-%% Processed plotting
+%% POST PROCESSED PLOTTING
 
-socVector = (flip(socVector));
+socVector = getSOCVector(cell, ocv, pulsePackets);
 
 % Impedance Plots
 figure
@@ -192,4 +191,17 @@ function params = initializeParams(paramNames, paramInitialValues)
         params(i).Minimum = 0;     
         params(i).Scale = 0.25;
     end
+end
+
+function socVector = getSOCVector(cell, ocv, pulsePackets)
+
+    [ocv, uniqueIndices, ~] = unique(ocv);
+    socs = cell.soc(uniqueIndices);
+    
+    for i=1:66
+        socVector(i) = interp1(ocv, socs, pulsePackets(i).voltage(1), "linear", 100);
+    end
+    
+    socVector = (flip(socVector));
+
 end
